@@ -152,7 +152,7 @@ like system users, I created them with disabled password.
             fi
         done
 
-* In file `$HADOOP_HOME/etc/hadoop/hadoop-env.sh` set `JAVA_HOME` as folows
+* In file `$HADOOP_HOME/etc/hadoop/hadoop-env.sh` set `JAVA_HOME` as follows
 
         export JAVA_HOME="/usr/lib/jvm/default-java"
 
