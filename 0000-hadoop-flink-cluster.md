@@ -36,11 +36,10 @@ More details on the
 
 ### SSH hardening
 
-Hadoop/Flink cluster requires SSH is properly working. While the specific
-configuration will be treated in the next steps, here there are some hints
-about the hardening.
-
-> To be continued...
+Hadoop/Flink cluster requires SSH access without password properly working.
+While the specific configuration will be treated in the next steps, in
+[this post](http://www.cyberciti.biz/tips/linux-unix-bsd-openssh-server-best-practices.html)
+you may found some best practices about the hardening process.
 
 ### Firewall configuration
 
@@ -115,6 +114,13 @@ like system users, I created them with disabled password.
         hadoop:~$ chmod 600 authorized_keys
         hadoop:~$ exit
 
+* Allow `hadoop` user in SSH configuration
+
+        $ cat /etc/ssh/sshd_config
+        ...
+        AllowUsers hadoop
+        ...
+
 * Download and untar Hadoop binaries (here I'm using v2.7.2)
 
         $ cd /opt
@@ -152,9 +158,19 @@ like system users, I created them with disabled password.
             fi
         done
 
-* In file `$HADOOP_HOME/etc/hadoop/hadoop-env.sh` set `JAVA_HOME` as follows
+* File: `/opt/hadoop/etc/hadoop/hadoop-env.sh`
 
+        $ cat /opt/hadoop/etc/hadoop/hadoop-env.sh
+        ...
+        # The only required environment variable is JAVA_HOME.  All others are
+        # optional.  When running a distributed configuration it is best to
+        # set JAVA_HOME in this file, so that it is correctly defined on
+        # remote nodes.
+
+        # The java implementation to use.
+        #export JAVA_HOME=${JAVA_HOME}
         export JAVA_HOME="/usr/lib/jvm/default-java"
+        ...
 
 * Create the Hadoop storage paths
 
@@ -173,7 +189,7 @@ All the mentioned files are in `$HADOOP_HOME/etc/hadoop`. Make the changes as
 
 * File: `core-site.xml`
 
-        $ cat /opt/hadoop/etc/hadoop/core-site.xml
+        $ cat core-site.xml
         ...
         <configuration>
             <property>
@@ -183,9 +199,48 @@ All the mentioned files are in `$HADOOP_HOME/etc/hadoop`. Make the changes as
         </configuration>
         ...
 
+* File: `yarn-site.xml`
+
+        $ cat yarn-site.xml
+        ...
+        <configuration>
+            <property>
+                <name>yarn.nodemanager.aux-services</name>
+                <value>mapreduce_shuffle</value>
+            </property>
+            <property>
+                <name>yarn.nodemanager.aux-services.mapreduce.shuffle.class</name>
+                <value>org.apache.hadoop.mapred.ShuffleHandler</value>
+            </property>
+            <property>
+                <name>yarn.resourcemanager.resource-tracker.address</name>
+                <value>master:8025</value>
+            </property>
+            <property>
+                <name>yarn.resourcemanager.scheduler.address</name>
+                <value>master:8030</value>
+            </property>
+            <property>
+                <name>yarn.resourcemanager.address</name>
+                <value>master:8050</value>
+            </property>
+        </configuration>
+
+* File: `mapred-site.xml`
+
+        $ cp mapred-site.xml.template mapred-site.xml
+        ... do changes ...
+        $ cat mapred-site.xml
+        ...
+        <property>
+            <name>mapreduce.framework.name</name>
+            <value>yarn</value>
+        </property>
+        ...
+
 * File: `hdfs-site.xml`
 
-        $ cat /opt/hadoop/etc/hadoop/hdfs-site.xml
+        $ cat hdfs-site.xml
         ...
         <configuration>
             <property>
@@ -200,29 +255,20 @@ All the mentioned files are in `$HADOOP_HOME/etc/hadoop`. Make the changes as
         </configuration>
         ...
 
-* File: `mapred-site.xml`
-
-        $ cd /opt/hadoop/etc/hadoop
-        $ cp mapred-site.xml.template mapred-site.xml
-        ... do changes ...
-        $ cat /opt/hadoop/etc/hadoop/mapred-site.xml
-        ...
-        <property>
-            <name>mapreduce.framework.name</name>
-            <value>yarn</value>
-        </property>
-        ...
-
 * File: `masters`
 
-        $ cat /opt/hadoop/etc/hadoop/masters
-        master
+        $ touch masters
+        $ cat /dev/null > masters
+        $ echo "master" >> masters
 
 * File: `slaves`
 
-        $ cat /opt/hadoop/etc/hadoop/slaves
-        slave1
-        slave2
+        $ touch slaves
+        $ cat /dev/null > slaves
+        $ echo "slave1" >> slaves
+        $ echo "slave2" >> slaves
+        ...
+        $ echo "slaveN" >> slaves
 
 * Format the `namenode`.
 
@@ -236,3 +282,9 @@ All the mentioned files are in `$HADOOP_HOME/etc/hadoop`. Make the changes as
 ### On the slave nodes
 
 > Todo
+
+## References
+
+* https://districtdatalabs.silvrback.com/creating-a-hadoop-pseudo-distributed-environment
+* http://chaalpritam.blogspot.it/2015/05/hadoop-270-single-node-cluster-setup-on.html
+* http://chaalpritam.blogspot.it/2015/05/hadoop-270-multi-node-cluster-setup-on.html
