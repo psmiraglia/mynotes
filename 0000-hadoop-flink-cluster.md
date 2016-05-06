@@ -1,8 +1,11 @@
 # Setting up a simple Hadoop/Flink cluster
 
-Here are reported the steps to create a simple Hadoop/Flink cluster.
+Here are reported the steps to create a simple Hadoop/Flink cluster. This
+guide was inspired from
 
 * https://districtdatalabs.silvrback.com/creating-a-hadoop-pseudo-distributed-environment
+* http://chaalpritam.blogspot.it/2015/05/hadoop-270-single-node-cluster-setup-on.html
+* http://chaalpritam.blogspot.it/2015/05/hadoop-270-multi-node-cluster-setup-on.html
 
 ## System requirements
 
@@ -282,9 +285,3 @@ All the mentioned files are in `$HADOOP_HOME/etc/hadoop`. Make the changes as
 ### On the slave nodes
 
 > Todo
-
-## References
-
-* https://districtdatalabs.silvrback.com/creating-a-hadoop-pseudo-distributed-environment
-* http://chaalpritam.blogspot.it/2015/05/hadoop-270-single-node-cluster-setup-on.html
-* http://chaalpritam.blogspot.it/2015/05/hadoop-270-multi-node-cluster-setup-on.html
