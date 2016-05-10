@@ -1,8 +1,9 @@
-# SaltStack mini infrastructure
+# SaltStack mini infrastructure (basic installation)
 
 This guide explains how to setup a simple SaltStack infrastructure composed of
 one `master` and two `minions`. The staring point is a minimal installation of
-Debian 8.4 (amd64).
+Debian 8.4 (amd64). A copy of all the configuration files is available under
+the [`files`](./files) directory.
 
 ## Common steps
 
@@ -10,7 +11,7 @@ Apply the following steps to all the servers composing your infrastructure.
 
 ### Adding APT repositories
 
-    $ cd /etc/apt/source.list.d
+    $ cd /etc/apt/sources.list.d
     $ echo "deb http://debian.saltstack.com/debian jessie-saltstack main" > saltstack.list
     $ wget -q -O- "http://debian.saltstack.com/debian-salt-team-joehealy.gpg.key" | apt-key add -
     $ apt-get update
@@ -33,11 +34,13 @@ Create a new chain named `SALTSTACK` and append (or insert) it to the system
     $ iptables -A INPUT -j SALTSTACK
 
 Populate the `SALTSTACK` chain with the following rules (we assume `minions`
-operating on `192.168.100.0/24` and `192.168.101.0/24` networks).
+operating on the `192.168.101.0/24` network).
 
     $ iptables -A SALTSTACK -i lo -p tcp -m multiport --dports 4505,4506 -j ACCEPT
-    $ iptables -A SALTSTACK -s 192.168.122.0/24 -p tcp -m state --state new -m multiport --dports 4505,4506 -j ACCEPT
-    $ iptables -A SALTSTACK -s 192.168.123.0/24 -p tcp -m state --state new -m multiport --dports 4505,4506 -j ACCEPT
+    $ iptables -A SALTSTACK -s 192.168.101.0/24 -p tcp -m state --state new -m multiport --dports 4505,4506 -j ACCEPT
+
+See a [full example](./files/etc/iptables/rules.v4) considering
+`iptables-persistent` as firewall rules manager.
 
 ### Install the `master`
 
@@ -51,19 +54,19 @@ separate `.conf` files using YAML syntax.
 Conf files are located under `/etc/salt/master.d` directory. Of course, it may
 change according to the distribution.
 
-For the purpose of this guide, we use two files named `primary.conf` and
-`file_server.conf`. The former includes main settings
+For the purpose of this guide, we use three files named `primary.conf`,
+`file_server.conf` and `logging.conf`. Set the files as follows.
 
     $ cat /etc/salt/master.d/primary.conf
     interface: 192.168.122.146
-    ipv6: False
-
-while the latter, configures the local file server.
 
     $ cat /etc/salt/master.d/file_server.conf
     file_roots:
       base:
-        - /srv/salt
+        - /opt/salt
+
+    $ cat /etc/salt/master.d/logging.conf
+    log_level_logfile: info
 
 Further details about the `master` configuration on the
 [official guide](https://docs.saltstack.com/en/latest/ref/configuration/master.html).
@@ -71,11 +74,15 @@ Further details about the `master` configuration on the
 Before restarting the `master`, create (if not exists) all the paths declared
 under `file_roots` directive. In this case
 
-    $ mkdir /srv/salt
+    $ mkdir /opt/salt
 
 Restart the `master`
 
     $ service salt-master restart
+
+To monitor the `master`
+
+    $ tail -f /var/log/salt/master
 
 ## Salt `minion`
 
@@ -89,13 +96,14 @@ Apply the following steps on all the `minions`.
 ### Configure the `minion`
 
 As for the `master`, also `minions` configuration can be modular.
-Configuration files are located under `/etc/salt/minon.d`.
+Configuration files are located under `/etc/salt/minon.d`. Set the `minion`
+configuration files as follows.
 
-Firstly, we need to specify who is the `master`. You may use `IP` or
-`hostname`.
+    $ cat /etc/salt/minion.d/primary.conf
+    master: salt-master
 
-    $ cd /etc/salt/minion.d
-    $ echo "master: salt-master" > primary.conf
+    $ cat /etc/salt/minion.d/logging.conf
+    log_level_logfile: info
 
 Then, for security reasons, we need to specify the `master`'s fingerprint.
 To get this value, run on the `master` the following command
@@ -108,11 +116,19 @@ To get this value, run on the `master` the following command
 
 Grab the `master.pub` value and put in in the `minion` configuration
 
-        $ cd /etc/salt/minion.d
-        $ echo "master_finger: '6c:3c:19:ec:09:1d:36:9f:d4:d3:be:1f:e3:57:71:dc'" > security.conf
+    $ cat /etc/salt/minion.d/security.conf
+    $ master_finger: '6c:3c:19:ec:09:1d:36:9f:d4:d3:be:1f:e3:57:71:dc'
 
 Further details about the `minion` configuration on the
 [official guide](https://docs.saltstack.com/en/latest/ref/configuration/minion.html).
+
+Restart the `minion`
+
+    $ service salt-minion restart
+
+To monitor the `minion`
+
+    $ tail -f /var/log/salt/minion
 
 ## Back to the salt `master`
 
@@ -123,8 +139,8 @@ We're quite ready. Before proceeding, we need to register the `minions` on the
     Accepted Keys:
     Denied Keys:
     Unaccepted Keys:
-    salt-minion-1
-    salt-minion-2
+    minion-1
+    minion-2
     Rejected Keys:
 
 As you can see, there are two unaccepted keys. You can accept all in one shot
@@ -140,8 +156,8 @@ Once accepted, you should have something like that
 
     $ salt-key -L
     Accepted Keys:
-    salt-minion-1
-    salt-minion-2
+    minion-1
+    minion-2
     Denied Keys:
     Unaccepted Keys:
     Rejected Keys:
@@ -149,9 +165,9 @@ Once accepted, you should have something like that
 Let's start with the first test
 
     $ salt '*' test.ping
-    salt-minion-2:
+    minion-2:
         True
-    salt-minion-1:
+    minion-1:
         True
 
 It seems to work...
