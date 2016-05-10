@@ -1,0 +1,1 @@
+# SaltStack mini infrastructure
